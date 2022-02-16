@@ -44,7 +44,7 @@ class DistanceMeasure(nn.Module):
                 n, L = self.obj.Window.shape[i], self.obj.Window.scale[i]
                 freq_gen = torch.fft.rfftfreq if i==self.ndim-1 else torch.fft.fftfreq
                 freq[i]  = 2*pi*n*freq_gen(n, d=L)
-            self.freq = torch.stack(list(torch.meshgrid(*freq)), dim=-1).detach()
+            self.freq = torch.stack(list(torch.meshgrid(*freq, indexing="ij")), dim=-1).detach()
         
 
     def forward(self, Sample, Data=None):
@@ -96,8 +96,9 @@ class DistanceMeasure(nn.Module):
             return (predict-target).square().mean() / (target).square().mean()
             # return torch.log((predict/target).abs()).square().sum()
         else:
-            # return (predict-target).square().mean() / (target).square().mean()
-            return torch.log((predict/target).abs()).square().sum()
+            return (predict-target).square().mean() / (target).square().mean()
+            # return torch.log((predict/target).abs()).square().mean() / torch.log((target).abs()).square().mean()
+            
 
     def preprocess_data(self, Data):
         self.nDescriptors = None
@@ -120,7 +121,7 @@ class DistanceMeasure(nn.Module):
                 self.data_descriptors[i] = interpolate(sd, shape)
 
     def statistial_descriptors(self, Sample):
-        l = 10
+        l = 20
 
         ### Volume fraction and specific surface area
         vf = Sample.mean()
@@ -128,7 +129,7 @@ class DistanceMeasure(nn.Module):
         # sphericity = (36*pi)**(1/3) / sa
 
         ### Two-point correlation 
-        S2 = autocorrelation(Sample-Sample.mean()) #/ vf#[:l,:l]
+        S2 = autocorrelation(Sample - Sample.mean()) #[:l,:l,:l]
         # S2 = self.softplus(S2)
         # H1 = torch.zeros([3])
         # H2 = torch.zeros([3])
@@ -159,7 +160,7 @@ class DistanceMeasure(nn.Module):
         # d1J2 = autocorrelation(I-sa, deriv=1) #/ vf
         # d2J2 = autocorrelation(I-sa, deriv=2) #/ vf
         I  = interface(Sample)
-        I2 = autocorrelation(I-I.mean()) #/ sa
+        I2 = autocorrelation(I - I.mean()) #[:l,:l,:l]
         # G  = gradient(Sample, fft=True).norm(dim=0)
         # GG = autocorrelation(G)
         # G  = gradient(Sample, fft=True) #), diff=True, scheme='backward') #.norm(dim=0)
@@ -179,19 +180,7 @@ class DistanceMeasure(nn.Module):
         # w = torch.exp(-10*r)
         # w = 1
 
-        ### Correlation integrals (effective correlation lengths)
-        # shape, ndim = Sample.shape, Sample.dim()
-        # L = torch.zeros((ndim,))
-        # # C = torch.zeros((ndim,))
-        # for j in range(ndim):
-        #     index = [0]*ndim
-        #     index[j] = None
-        #     L[j] = torch.trapz(S2[index]) / torch.flatten(S2)[0] / S2[index].numel()
-        #     # C[j] = torch.trapz(J2[index]) / torch.flatten(J2)[0] / J2[index].numel()
-        # # R0  = torch.trapz(S2[:,0]) / S2[0,0] / S2[:,0].numel()
-        # # R1  = torch.trapz(S2[0,:]) / S2[0,0] / S2[0,:].numel()
-        # # P0  = torch.trapz(J2[:,0]) / J2[0,0] / J2[:,0].numel()
-        # # P1  = torch.trapz(J2[0,:]) / J2[0,0] / J2[0,:].numel()
+        
 
         ### Vector of statistical descriptors
         sd = []

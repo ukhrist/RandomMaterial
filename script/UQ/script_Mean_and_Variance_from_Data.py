@@ -5,7 +5,7 @@ import pickle
 
 
 datafile     = "data_stiffness_RP_grid7"
-outputfolder = "/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/UQ_MacroStiffness/"
+outputfolder = "./"
 
 
 """
@@ -23,7 +23,7 @@ with open(filename, 'rb') as filehandler:
 
 """
 ==================================================================================================================
-Comupte Mean and Variance
+Compute Mean and Variance
 ==================================================================================================================
 """
 

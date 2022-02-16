@@ -6,16 +6,18 @@ import torch
 from tqdm import tqdm
 
 
+import vtk
+from vtk.util.numpy_support import vtk_to_numpy
+
 from source.StructureFields.SupportedMaterials import LatticeMaterial
 from source.Kernels.MaternKernel import MaternKernel
 from source.RandomParameters import RandomParameters
 from source.LinearElasticity.LinearElasticity_FourierBased import LinearElastisityProblem_FB as LinearElasticityProblem
 # from source.LinearElasticity.LinearElasticity_Fourier_torch import LinearElastisityProblem_Fourier as LinearElasticityProblem_torch
 
-
-
-outputfile   = "data_stiffness"
-outputfolder = "./"
+inputfile    = "octettruss_surrogate_cell1.vtk"
+inputfolder  = "./"
+outputfolder = inputfolder
 
 nsamples = 100
 
@@ -76,15 +78,15 @@ config = {
 
     # Linear elasticity settings
     'Young_modulus_I'   :   0.,
-    'Poisson_ratio_I'   :   0.3,
-    'Young_modulus_M'   :   1.e0,
+    'Poisson_ratio_I'   :   0.2,
+    'Young_modulus_M'   :   400.,
     'Poisson_ratio_M'   :   0.3,
 
     # Fourier solver settings
     'n_terms_trunc_PeriodizedGreen' :   100,
 
     # Reference stiffness factor
-    'ref_stiff_factor'  :   1,
+    'ref_stiff_factor'  :   2,
 
     # 2D stress-strain type
     # 'plane_stress_strain'   :   'strain',
@@ -127,38 +129,35 @@ config = {
 #     # 'noise_quantile'
 # }
 
-### Parameters randomizer
-random_parameters_config = torch.load(outputfolder+"random_parameters_config")
-RP = RandomParameters(random_parameters_config)
 
 
 # pb_torch = LinearElasticityProblem_torch(**config)
 
 RM = LatticeMaterial(**config)
 pb = LinearElasticityProblem(**config)
-E_list = [] ### list of macro stiffness samples
 
-### fix random seed if only one sample (for testing)
-if nsamples==1: RM.seed(0)
+reader = vtk.vtkStructuredPointsReader()
+reader.SetFileName(inputfolder+inputfile)
+reader.ReadAllVectorsOn()
+reader.ReadAllScalarsOn()
+reader.Update()
 
-### Generate data
-pbar = tqdm(total=nsamples)
-pbar.set_description("isample / nsamples");
-for isample in range(nsamples):
-    if "RP" in locals():
-        print("Sample parameters..")
-        RP.sample_parameters(RM)
-    Structure = RM.sample()
-    if nsamples<4:
-        RM.save_vtk(outputfolder+"sample_{0:d}".format(isample), Structure)
-    E_i = pb.compute_MacroStiffness(Structure)
-    E_list.append(E_i)
-    pbar.update(1)
-del(pbar)
 
-### Save data to file
-datafile = open(outputfolder + outputfile + '.pkl', 'wb')
-pickle.dump((E_list, config), datafile)
+data = reader.GetOutput()
+dim = data.GetDimensions()
+shape = list(dim)
+vtk_array = data.GetPointData().GetArray('field')
 
-if config["verbose"]: print(E_list)
+# VTK to Numpy
+my_numpy_array = vtk_to_numpy(vtk_array)
+
+Structure = my_numpy_array.reshape(shape)
+Structure = RM.sample()
+RM.save_vtk(outputfolder+"sample_test", Structure)
+
+E = pb.compute_MacroStiffness(Structure)
+
+strain = pb.Strain
+
+if config["verbose"]: print(strain)
 

@@ -15,7 +15,9 @@ from torch.nn.utils.convert_parameters import parameters_to_vector
 
 from .CVaR import CVaR
 
-from LBFGS import LBFGS ### requires LBFGS modul for PyTorch from https://github.com/hjmshi/PyTorch-LBFGS
+import sys
+sys.path.append('/home/khristen/ThirdPartyCode/PyTorch-LBFGS/functions/')
+
 
 
 class calibrate():
@@ -71,10 +73,6 @@ class calibrate():
 
         nparams = len([p for p in self.Model.Material.parameters()])
 
-        def closure():
-            self.Optimizer.zero_grad()
-            self.Model.update()
-            return self.Model.val(self.Batch)
 
         def get_grad(Batch):
             vals, grads = [], []
@@ -83,22 +81,12 @@ class calibrate():
                 self.Model.update()
                 val = self.Model.forward(w)
                 val.backward()
-                grad = self.Optimizer._gather_flat_grad()
+                # grad = self.Optimizer._gather_flat_grad()
+                grad = torch.cat([p.grad for p in self.Model.parameters()]).detach()
                 grads.append(grad)
-                vals.append(val)
+                vals.append(val.item())
             return grads, vals
 
-        # def func(theta):
-        #     self.Model
-        #     self.Model.forward(w)
-
-        # def get_hess(Batch):
-        #     hess = []
-        #     for w in Batch:
-        #         self.Model.update()
-        #         H = torch.autograd.functional.hessian(self.Model.forward, w)
-        #         hess.append(H)
-        #     return hess
 
         Batch_Ok_prev = np.array([], dtype=np.int)
         grads_Ok_prev, vals_Ok_prev = [], []
@@ -353,23 +341,6 @@ class calibrate():
         #     return True
         # else:
         #     return False
-
-    def inner_product_test(self, grads, kappa=1):
-
-        S  = len(grads)
-        gs = grads if torch.is_tensor(grads) else torch.stack(grads, dim=0)
-        g  = gs.mean(dim=0)
-        Hg = self.Optimizer.two_loop_recursion(1.*g)
-        HHg= self.Optimizer.two_loop_recursion(1.*Hg)
-        
-        Var = torch.tensor(0.)
-        for gi in gs:
-            Var += (torch.inner(gi, HHg) - Hg.norm()**2).square()
-        Var = Var  / (S-1)
-        test  = ( Var/S  <= kappa**2 * Hg.norm()**4 )
-        self.batch_size_bound = Var / (kappa**2 * Hg.norm()**4)
-        return test
-
 
 
     def init_line_search(self, grads):

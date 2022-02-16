@@ -36,7 +36,7 @@ class FracturesCollection(RandomField):
         self.radius = kwargs.get('radius', 0.1)
 
         axes = [torch.arange(n)/n for n in self.Window.shape]
-        self.coordinates = torch.stack(torch.meshgrid(*axes), axis=-1).detach()
+        self.coordinates = torch.stack(torch.meshgrid(*axes, indexing="ij"), axis=-1).detach()
 
         self.tau        = kwargs.get('tau', 0)
 
@@ -88,8 +88,6 @@ class FracturesCollection(RandomField):
 
         radius     = torch.tensor( np.random.lognormal(mean=np.log(self.radius.item()), sigma=np.sqrt(3*self.radius.item()), size=nParticles)  ) # opening = 2*radius
 
-        # axes = [torch.arange(n)/n for n in self.Window.shape]
-        # x = torch.stack(torch.meshgrid(*axes), axis=-1)
         x = self.coordinates.unsqueeze(-1)
         x0=x[:,:,0,:]
         y0=x[:,:,1,:]

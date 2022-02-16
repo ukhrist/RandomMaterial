@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from source.RMNet.StatisticalDescriptors.common import interpolate
+from source.StatisticalDescriptors.common import interpolate
 
 def load_data_from_npy(filename, downsample_shape=None):
     Data_full = np.load(filename)

@@ -76,7 +76,7 @@ class LinearElastisityProblem_Fourier(object):
 
 		self.frq = fft.fftfreq(self.N)
 		self.frq = torch.tensor(self.frq)
-		self.freqs  = torch.stack(torch.meshgrid(*([self.frq]*self.ndim)))
+		self.freqs  = torch.stack(torch.meshgrid(*([self.frq]*self.ndim), indexing="ij"))
 		self.Ntrunc = kwargs.get("n_terms_trunc_PeriodizedGreen")
 
 		self.nticks_qoi = kwargs.get("nticks_qoi")
@@ -166,7 +166,7 @@ class LinearElastisityProblem_Fourier(object):
 		factor_loc_vec = torch.zeros([self.ndim] + list(self.shape))
 
 		M_grid = torch.arange(2*Ntrunc+1) - Ntrunc
-		M_meshgrid = torch.stack(torch.meshgrid(*( [M_grid]*self.ndim )))
+		M_meshgrid = torch.stack(torch.meshgrid(*( [M_grid]*self.ndim ), indexing="ij"))
 		M_meshgrid = M_meshgrid.reshape([self.ndim, -1]).T
 
 		G = torch.zeros([self.ndim]*4 + list(self.shape))

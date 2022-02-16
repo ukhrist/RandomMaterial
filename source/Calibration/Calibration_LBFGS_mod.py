@@ -66,10 +66,12 @@ class calibrate():
         ### Define optimizer
         not_require_grad = kwargs.get('not_require_grad', [])
         self.set_not_require_grad(not_require_grad)
-        params  = self.Model.Material.parameters()
+        # params  = self.Model.Material.parameters()
+        params  = self.Model.parameters()
         self.Optimizer = LBFGS(params, lr=lr, history_size=history_size, line_search=line_search, debug=self.debug)
 
         nparams = len([p for p in self.Model.Material.parameters()])
+
 
         def closure():
             self.Optimizer.zero_grad()
@@ -88,90 +90,62 @@ class calibrate():
                 vals.append(val)
             return grads, vals
 
-        # def func(theta):
-        #     self.Model
-        #     self.Model.forward(w)
-
-        # def get_hess(Batch):
-        #     hess = []
-        #     for w in Batch:
-        #         self.Model.update()
-        #         H = torch.autograd.functional.hessian(self.Model.forward, w)
-        #         hess.append(H)
-        #     return hess
-
-        Batch_Ok_prev = np.array([], dtype=np.int)
-        grads_Ok_prev, vals_Ok_prev = [], []
-        self.g_hist = []
+        def update_batch():
+            self.Batch, self.vals, self.grads = [], [], []
+            test = False
+            while True:
+                self.Batch, Batch_plus = self.extend_batch(self.Batch, self.batch_size)            
+                grads_plus, vals_plus = get_grad(Batch_plus)
+                self.grads.extend(grads_plus)
+                self.vals.extend(vals_plus)
+                i_test = self.inner_product_test(self.grads, kappa=1)
+                if self.SGD:
+                    o_test = self.orthogonality_test(self.grads, kappa=1)
+                else:
+                    o_test = True
+                print('tests :', i_test, o_test)
+                if i_test and o_test: break
+                self.batch_size = self.batch_size + 1
+            return self.grads, self.vals
 
         ### store initial state
-        # self.Batch  = self.draw(self.batch_size)
-        # grads, vals = get_grad(self.Batch)
-        # self.loss   = torch.stack(vals).mean(dim=0)
-        # self.g_Sk   = torch.stack(grads).mean(dim=0)
-        # self.crit   = self.g_Sk.norm(p=np.infty)
         self.store_iteration_results()
+        self.g_hist = []
 
         ### MAIN LOOP
         for n_iter in range(max_iter):
             self.n_iter = n_iter
 
             self.print_parameters()
-            
-            Batch = Batch_Ok_prev
-            Batch, Batch_plus = self.extend_batch(Batch, self.batch_size)
 
-            if self.Model.GAN: self.Model.update_Discriminator(Batch)
+            grads, vals = update_batch()
+            print('Batch size =', len(self.Batch))
 
-            grads, vals = get_grad(Batch_plus)
-            # hess = get_hess(Batch_plus)
-
-            grads.extend(grads_Ok_prev)
-            vals.extend(vals_Ok_prev)
-
-            if self.update_batch_size(grads):
-
-                Batch, Batch_plus = self.extend_batch(Batch, self.batch_size)
-            
-                grads_plus, vals_plus = get_grad(Batch_plus)
-
-                grads.extend(grads_plus)
-                vals.extend(vals_plus)
-
-
-            indices = np.arange(self.batch_size)
-            Ok = indices[-self.overlap_size:]
-
-            grads = torch.stack(grads)            
-            g_Ok  = grads[Ok].mean(dim=0)
+            grads = torch.stack(grads)
             g_Sk  = grads.mean(dim=0)
             loss  = torch.stack(vals).mean(dim=0)
         
-            ### two-loop recursion to compute search direction
             if self.SGD:
-                lr = 0.1
-                p = -lr*g_Sk
+                p = -g_Sk
             else:
-                p = self.Optimizer.two_loop_recursion(-g_Sk)                  
+                ## two-loop recursion to compute search direction
+                p = self.Optimizer.two_loop_recursion(-g_Sk)
                 alpha_init = self.init_line_search(grads)
                 p = alpha_init * p
 
-
-            if not self.Model.GAN:
-                print('g_Sk    = ', g_Sk.data.tolist())
-                print('Hg_Sk   = ', p.data.tolist())
-                print('Misfits = ', self.Model.dist.misfit.data.tolist())
+            print('g_Sk    = ', g_Sk.data.tolist())
+            print('Hg_Sk   = ', (-p.data).tolist())
+            print('Misfits = ', self.Model.dist.misfit.data.tolist())
     
             ### perform line search step
-            self.Batch = Batch
-            options = { 'closure'       : closure, 
+            options = { 'closure'       : closure,
                         'current_loss'  : loss,
-                        'max_ls'        : 10,
+                        'max_ls'        : 20,
                         'inplace'       : True,
                         'interpolate'   : True,
                         'ls_debug'      : self.debug,
                     }
-            result  = self.Optimizer.step(p, g_Ok, g_Sk=g_Sk, options=options)
+            result  = self.Optimizer.step(p, g_Sk, g_Sk=g_Sk, options=options)
             if line_search == 'None':
                 lr = result
             elif line_search == 'Armijo':
@@ -183,35 +157,20 @@ class calibrate():
             inc = lr*p
 
             ### criterion
-            # crit = (g_Sk*parameters_to_vector(self.Model.parameters()).exp()).norm(p=np.infty)
-            # crit = inc.norm(p=np.infty) #/loss.item()
-            crit = torch.inner(g_Sk, inc).abs() #/loss.item()
-            if self.Model.GAN:
-                crit = g_Sk.norm(p=np.infty) #/loss.item()
-                # print('     D(G) = ', self.Model.D(self.Model.Material.sample()).item())
-                # print('     D(Y) = ', self.Model.D(self.Model.DataSample).item())
-            self.crit = crit
+            self.crit = inc.norm(p=np.infty) #torch.inner(g_Sk, inc).abs() #/loss.item()
 
-            ### compute gradient
-            if line_search != 'Armijo': loss = closure()
-            loss.backward()
-            g_Sk = self.Optimizer._gather_flat_grad()
-            self.g_Sk = g_Sk
-            self.loss = loss
-            self.g_hist.append(g_Sk)
+            if not self.SGD:
+                ### recompute gradient
+                grads, vals = get_grad(self.Batch)
+                grads = torch.stack(grads)
+                g_Sk  = grads.mean(dim=0)
+                loss  = torch.stack(vals).mean(dim=0)
+                self.g_Sk = g_Sk
+                self.loss = loss
+                self.g_hist.append(g_Sk)
 
-            ### compute previous overlap gradient for next sample
-            # Batch_Ok_prev = Batch[Ok]
-            # grads_Ok_prev, vals_Ok_prev = get_grad(Batch_Ok_prev)
-            # g_Ok_prev = torch.stack(grads_Ok_prev).mean(dim=0)
-
-            Batch_Ok_prev = np.array([], dtype=np.int)
-            grads_Ok_prev, vals_Ok_prev = [], []
-
-            
-            ### curvature update
-            # self.Optimizer.curvature_update(g_Ok_prev, eps=curvature_eps, damping=Powell_dumping)
-            self.Optimizer.curvature_update(g_Sk, eps=curvature_eps, damping=Powell_dumping)
+                ### curvature update
+                self.Optimizer.curvature_update(g_Sk, eps=curvature_eps, damping=Powell_dumping)
 
 
             
@@ -220,12 +179,12 @@ class calibrate():
             if self.verbose:               
                 print()
                 print('=========================================================================')
-                print('Iter:', n_iter + 1, 'lr:', lr, 'Loss:', loss.item(), 'Grad:', g_Sk.norm(p=np.infty).item(), 'Inc:', inc.norm(p=np.infty).item(), 'Crit:', crit.item())
+                print('Iter:', n_iter + 1, 'lr:', lr, 'Loss:', loss.item(), 'Grad:', g_Sk.norm(p=np.infty).item(), 'Inc:', inc.norm(p=np.infty).item(), 'Crit:', self.crit.item())
                 print('=========================================================================')
                 print()
 
                 if self.Model.Material.ndim == 3:
-                    # self.Model.Material.calibration_regime = False
+                    self.Model.Material.calibration_regime = False
                     self.Model.Material.save_vtk(output_folder+'current_sample', seed=0)
                     self.Model.Material.calibration_regime = True
                     self.Model.Material.export_parameters(output_folder + 'inferred_parameters')
@@ -234,7 +193,7 @@ class calibrate():
             self.store_iteration_results()
                
             ### stop criterion
-            if crit.item() < tol: break
+            if self.crit.item() < tol: break
             # if loss < tol: break
             # if lr < tol: break
             # if g_Sk.norm() < tol: break
@@ -260,27 +219,27 @@ class calibrate():
 
     def draw(self, size):
         # return torch.randint(1000, (int(size),))
-        return np.random.randint(1000, size=size)
+        return np.random.randint(10000000, size=size)
 
     def extend_batch(self, Batch, size):
         size_ini = len(Batch)
         while len(Batch) < size:
             Batch_plus = self.draw(size-len(Batch))
-            Batch      = np.append(Batch,Batch_plus)
+            Batch      = np.append(Batch,Batch_plus).astype(np.int)
             Batch      = pd.unique(Batch)
         Batch_plus = Batch[size_ini:]
         return Batch, Batch_plus
 
-    def update_batch_size(self, grads):
-        if self.Model.GAN:
-            return False
+    
+
+    def inner_product_test(self, grads, kappa=1):
 
         S  = len(grads)
         gs = grads if torch.is_tensor(grads) else torch.stack(grads, dim=0)
         g  = gs.mean(dim=0)
         if self.SGD:
-            Hg = g
-            HHg= g
+            Hg  = g
+            HHg = g
         else:
             Hg = self.Optimizer.two_loop_recursion(1.*g)
             HHg= self.Optimizer.two_loop_recursion(1.*Hg)
@@ -288,86 +247,24 @@ class calibrate():
         Var = torch.tensor(0.)
         for gi in gs:
             Var += (torch.inner(gi, HHg) - Hg.norm()**2).square()
-        Var = Var / Hg.norm()**4 / (S-1)
+        Var = Var / max(S-1,1)
+        test  = ( Var/S  <= kappa**2 * Hg.norm()**4 )
+        self.batch_size_bound = Var / (kappa**2 * Hg.norm()**4)
+        return test
 
 
-        # batch_size = len(grads)
-        # gs = torch.stack(grads, dim=0)
-        # g  = gs.mean(dim=0)
-        # Hg = self.Optimizer.two_loop_recursion(-g)
-        # HHg= self.Optimizer.two_loop_recursion(-Hg/Hg.norm())
-        # Hg2= Hg.square().sum()
-        # Var = torch.tensor(0.)
-        # for gi in gs:
-        #     # Var += (torch.inner(gi, HHg) - Hg2).square()
-        #     # Var += torch.inner(gi-g, HHg).square()
-        #     Var += (torch.inner(gi/Hg.norm(), HHg) - 1).square()
-        # Var /= (batch_size-1)
-        # # bound = Var / Hg2.square() if Hg2 else 0
-
-
-        kappa = 1
-        bound = Var
-        bound /= kappa**2
-
-
-        # Var2 = torch.tensor(0.)
-        # for gi in gs:
-        #     Hgi  = self.Optimizer.two_loop_recursion(1.*gi)   
-        #     Var2 += (Hgi - Hg).square().sum()
-        # Var2 = Var2 / (S-1) / Hg.norm()**2
-
-        # kappa2 = 2
-        # bound2 = Var2
-        # bound2 /= kappa2**2
-
-        print('Std of g: ', (gs-g).norm().item())
-
-
-
-
-        print('S, b = {}, {}'.format(self.batch_size, bound.item()))
-        # print('S, b = {}, {}, {}'.format(self.batch_size, bound.item(), bound2.item()))
-
-        if bound > 2*self.batch_size:
-        # if bound > 10:
-            # raise Exception('Batch size increment is too large !')
-            print('\n\nBatch size increment is too large !\n\n')
-            # exit()
-            return False
-
-        if self.batch_size < bound:
-            self.batch_size_prev = self.batch_size
-            self.batch_size      = int(np.ceil(bound))
-            self.overlap_size    = int(self.overlap_ratio * self.batch_size)
-            return True
-        # elif self.sample_control(g, gs):
-        #     return True
-        else:
-            return False
-
-        # if self.batch_size < bound2:
-        #     self.batch_size_prev = self.batch_size
-        #     self.batch_size      = int(np.ceil(bound2))
-        #     self.overlap_size    = int(self.overlap_ratio * self.batch_size)
-        #     return True
-        # else:
-        #     return False
-
-    def inner_product_test(self, grads, kappa=1):
+    def orthogonality_test(self, grads, kappa=1):
 
         S  = len(grads)
         gs = grads if torch.is_tensor(grads) else torch.stack(grads, dim=0)
         g  = gs.mean(dim=0)
-        Hg = self.Optimizer.two_loop_recursion(1.*g)
-        HHg= self.Optimizer.two_loop_recursion(1.*Hg)
+        d  = g/g.norm()
         
-        Var = torch.tensor(0.)
+        Orth = torch.tensor(0.)
         for gi in gs:
-            Var += (torch.inner(gi, HHg) - Hg.norm()**2).square()
-        Var = Var  / (S-1)
-        test  = ( Var/S  <= kappa**2 * Hg.norm()**4 )
-        self.batch_size_bound = Var / (kappa**2 * Hg.norm()**4)
+            Orth += (gi - torch.inner(gi, d)*d).norm().square()
+        Orth = Orth / max(S-1,1)
+        test  = ( Orth/S  <= kappa**2 * g.norm()**2 )
         return test
 
 

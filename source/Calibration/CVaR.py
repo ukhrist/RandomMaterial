@@ -52,6 +52,7 @@ class CVaR(nn.Module):
         beta, t = self.beta, self.quantile
         self.Material.seed(w)
         MaterialSample = self.Material.sample()
+        # if MaterialSample.mean()
         # isempty = self.empty_sample_assert(MaterialSample)
         if self.GAN:
             # if Discriminator:
@@ -101,7 +102,7 @@ class CVaR(nn.Module):
     def val(self, Batch, Discriminator=False):
         val = torch.tensor(0.)
         for w in Batch:
-            val += self.sample(w, Discriminator=Discriminator)
+            val += self.sample(w, Discriminator=Discriminator).item()
         val /= len(Batch)
         return val
 

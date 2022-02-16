@@ -103,8 +103,8 @@ class RandomField(nn.Module):
             if output:
                 self.sample_count += 1
                 filename = path + 'sample_{0:d}'.format(self.sample_count)
-                if   self.ndim==2 and output_format is "png": self.save_png(phase, filename)
-                elif self.ndim==3 or  output_format is "vtk": self.save_vtk(phase, filename)
+                if   self.ndim==2 and output_format == "png": self.save_png(phase, filename)
+                elif self.ndim==3 or  output_format == "vtk": self.save_vtk(phase, filename)
         expected_vf /= nsamples
 
         print('All samples generation time: {0} s'.format(time()-time_start))
@@ -131,6 +131,7 @@ class RandomField(nn.Module):
             imsave(filename, Sample, format='png', vmin=0, vmax=1)   
         else:
             plt.rcParams['image.cmap']='jet'
+            # plt.rcParams['image.cmap']='rainbow'
             imsave(filename, Sample, format='png', vmin=Sample.min(), vmax=Sample.max())            
 
     ### Save in vtk format

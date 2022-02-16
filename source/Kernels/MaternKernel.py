@@ -42,6 +42,7 @@ class MaternKernel(Kernel):
         ### Learnable parameters
         self.log_nu      = nn.Parameter(torch.log(torch.tensor([nu], dtype=float)))
         self.log_corrlen = nn.Parameter(torch.log(torch.tensor(corrlen, dtype=float)))
+        # self.log_corrlen = nn.Parameter(torch.tensor(corrlen, dtype=float).sqrt())
         # self.axle    = nn.Parameter(torch.tensor(axle.astype(np.float)))
         # self.Theta = nn.Linear(self.ndim, self.ndim, bias=False).double()
         # self.Theta.weight.data = torch.tensor(Theta)
@@ -57,6 +58,7 @@ class MaternKernel(Kernel):
     @property
     def corrlen(self):
         return torch.exp(self.log_corrlen) * torch.ones([self.ndim])
+        # return self.log_corrlen.square() * torch.ones([self.ndim])
 
 
     @corrlen.setter
@@ -64,7 +66,8 @@ class MaternKernel(Kernel):
         # corrlen = [corrlen]*self.ndim if np.isscalar(corrlen) else corrlen[:self.ndim]
         # corrlen = torch.tensor(corrlen)
         # self.log_corrlen.data = torch.log(corrlen)
-        self.log_corrlen.data[:] = torch.tensor(corrlen).log()
+        # self.log_corrlen.data[:] = torch.tensor(corrlen).log()
+        self.log_corrlen.data[:] = torch.tensor(corrlen).double().sqrt()
 
 
     def eval_func(self, x, nu=None, rho=None): ### no torch

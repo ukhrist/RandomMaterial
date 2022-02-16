@@ -1,4 +1,5 @@
 
+from math import pi, sqrt, sin, cos
 import torch
 from torch import nn
 import numpy as np
@@ -78,4 +79,23 @@ Rotation matrix
 """
 #TODO: rotate vector
 def rotate(v, axle=None):
+    # angles = 0, 0, 0
+    # # angles = pi/4, pi/4, 0
+
+    # a = angles[0]
+    # Rx1 = v[...,0]
+    # Rx2 = cos(a) * v[...,1] - sin(a) * v[...,2]
+    # Rx3 = sin(a) * v[...,1] + cos(a) * v[...,2]
+
+    # a = angles[1]
+    # Ry1 = cos(a) * Rx1 - sin(a) * Rx3
+    # Ry2 = Rx2
+    # Ry3 = sin(a) * Rx1 + cos(a) * Rx3
+
+    # a = angles[2]
+    # Rz1 = cos(a) * Ry1 - sin(a) * Ry2
+    # Rz2 = sin(a) * Ry1 + cos(a) * Ry2
+    # Rz3 = Ry3
+
+    # v = torch.stack([Rz1, Rz2, Rz3], dim=-1)
     return v

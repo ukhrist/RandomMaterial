@@ -38,11 +38,12 @@ class MultiPhaseMaterial(RandomField):
     def sample_intensities(self, noise=None):
         return None
 
-    def sample(self, noise=None):
-        IntensityVector   = self.sample_intensities(noise)
-        PhaseField        = self.actfc(IntensityVector)
-        PhaseField_smooth = self.actfc_smooth(IntensityVector)
-        PhaseField        = PhaseField_smooth + (PhaseField - PhaseField_smooth).detach()
+    def sample(self, noise=None, phases=None): ### phases=None - all phases
+        IntensityVector = self.sample_intensities(noise)
+        if phases is not None:
+            PhaseField = IntensityVector[..., phases].detach().numpy()
+        else:
+            PhaseField = self.actfc(IntensityVector)
         return PhaseField
 
 
@@ -55,9 +56,8 @@ class MultiGrainMaterial(MultiPhaseMaterial):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # self.Phase  = GrainMaterial(**kwargs)
-        # self.Phases = [self.Phase for i in range(self.nPhases)]
-        self.Phases = [GrainMaterial(**kwargs, angle=np.random.uniform(pi/3-pi/6,pi/3+pi/6), shift=np.random.uniform(0,1000), shift_layers=i ) for i in range(self.nPhases)]
+        a = kwargs.pop('angle', pi/3)
+        self.Phases = [GrainMaterial(**kwargs, angle=np.random.normal(a, 0.1*a), shift=np.random.uniform(0,100), shift_layers=i ) for i in range(self.nPhases)]
         config = kwargs.copy()
         config['nu'] = 5
         config['correlation_length'] = 0.1

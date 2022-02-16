@@ -15,6 +15,7 @@ from .Particles import ParticlesCollection
 from .Fractures import FracturesCollection
 from .Voronoi import VoronoiCollection
 from .Cracks import CracksCollection
+from .Gyroid import Gyroid as GyroidStructure
 
 
 
@@ -30,7 +31,7 @@ class SupportedMaterial(TwoPhaseMaterial):
         self.par_alpha  = nn.Parameter(torch.tensor([0.]))
         self.par_tau    = nn.Parameter(torch.tensor([0.]))
         # self.par_tau    = torch.tensor([0.])
-        self.alpha      = kwargs.get('alpha', 1)
+        self.alpha      = kwargs.get('alpha', 0)
         self.tau        = kwargs.get('tau', 0)
 
 
@@ -43,12 +44,15 @@ class SupportedMaterial(TwoPhaseMaterial):
         # return torch.exp(self.par_alpha)
         # return self.par_alpha
         return 0.5 + 0.5*torch.tanh(self.par_alpha)
+        # x2 = self.par_alpha.square()
+        # return x2/(1+x2)
 
     @alpha.setter
     def alpha(self, alpha):
         # self.par_alpha.data[:] = torch.tensor(alpha, dtype=float).log()
         # self.par_alpha.data[:] = alpha
         self.par_alpha.data[:] = torch.tensor(2*alpha-1, dtype=float).atanh()
+        # self.par_alpha.data[:] = torch.tensor(alpha/(1-alpha), dtype=float).sqrt()
 
     @property
     def tau(self):
@@ -68,7 +72,7 @@ class SupportedMaterial(TwoPhaseMaterial):
         IntensityPerturbation = self.sample_GRF(noise)
         IntensityStructure    = self.Structure.sample()
         # IntensityField        = torch.cos(pi/2*self.alpha) * IntensityStructure + torch.sin(pi/2*self.alpha) * IntensityPerturbation - 0*self.tau
-        IntensityField        = (1-self.alpha) * IntensityStructure + self.alpha * IntensityPerturbation - 0*self.tau
+        IntensityField        = (1-self.alpha) * IntensityStructure + self.alpha * IntensityPerturbation #- 0*self.tau
         return IntensityField
 
 
@@ -166,5 +170,17 @@ class GrainMaterial(SupportedMaterial):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Structure = GrainStructure(**kwargs)
+
+
+
+#######################################################################################################
+#	Gyroid struture
+#######################################################################################################
+
+class GyroidMaterial(SupportedMaterial):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Structure = GyroidStructure(**kwargs)
 
 #######################################################################################################

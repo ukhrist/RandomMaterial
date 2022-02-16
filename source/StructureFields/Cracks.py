@@ -1,7 +1,7 @@
 
-
-from math import *
+from math import pi, sqrt
 import numpy as np
+from numpy.core.numeric import ones_like
 from scipy.optimize import fsolve
 from time import time
 
@@ -26,13 +26,15 @@ class CracksCollection(RandomField):
         # semiaxes = [semiaxes]*self.ndim if np.isscalar(semiaxes) else semiaxes[:self.ndim]
         # self.semiaxes = np.array(semiaxes)
 
-        self.par_radius = nn.Parameter(torch.tensor(0.))
-        self.radius = kwargs.get('radius', 0.1)
+        self.par_thickness = nn.Parameter(torch.tensor([0.]))
+        self.thickness     = kwargs.get('thickness', 0.1)
 
         axes = [torch.arange(n)/n for n in self.Window.shape]
-        self.coordinates = torch.stack(torch.meshgrid(*axes), axis=-1).detach()
+        self.coordinates = torch.stack(torch.meshgrid(*axes, indexing="ij"), axis=-1).detach()
 
-        self.tau        = kwargs.get('tau', 0)
+        self.tau = kwargs.get('tau', 0)
+
+        self.fg_periodic = kwargs.get('periodic', True)
 
 
         
@@ -41,14 +43,14 @@ class CracksCollection(RandomField):
     #--------------------------------------------------------------------------
 
     @property
-    def radius(self):
+    def thickness(self):
         # return torch.exp(self.__logRadius)
-        return self.par_radius.square()
+        return self.par_thickness.square()
 
-    @radius.setter
-    def radius(self, radius):
-        # self.__logRadius.data = torch.log(torch.tensor(float(radius)))
-        self.par_radius.data = torch.tensor(float(radius)).sqrt()
+    @thickness.setter
+    def thickness(self, thickness):
+        # self.__logRadius.data]:] = torch.log(torch.tensor(float(radius)))
+        self.par_thickness.data[:] = torch.tensor(float(thickness)).sqrt()
 
     # @semiaxes.setter
     # def semiaxes(self, semiaxes):
@@ -68,38 +70,60 @@ class CracksCollection(RandomField):
     #   Sampling
     #--------------------------------------------------------------------------
 
-    def sample(self):
-        nParticles = self.draw_nParticles()
-        # centers    = np.random.uniform(size=[nParticles, self.ndim])
-        centers    = torch.rand(self.ndim, nParticles)
-        radius     = torch.tensor( np.random.lognormal(mean=np.log(self.radius.item()), sigma=np.sqrt(3*self.radius.item()), size=nParticles)  )
+    def sample(self, periodic=None):
+        if periodic is None:
+            fg_periodic = self.fg_periodic
+        else:
+            fg_periodic = periodic
+            
 
-        # axes = [torch.arange(n)/n for n in self.Window.shape]
-        # x = torch.stack(torch.meshgrid(*axes), axis=-1)
+        nParticles = self.draw_nParticles()
+        centers    = torch.rand(self.ndim, nParticles) ### uniform on [0,1]
+        thickness  = self.thickness # * torch.zeros(nParticles).log_normal_(mean=0, std=sqrt(3))
+
         x = self.coordinates.unsqueeze(-1)
 
-        r = (x-centers).norm(dim=-2)
-        value = self.cone(r, radius)
-        # value = value[:3,:3,:2]
+        r = torch.abs(x-centers)    ### distance vector
+        if fg_periodic: r = torch.minimum(r, 1-r)   ### periodicity of distance 
+        distances_to_centers = r.norm(dim=-2) ### distances to the centers
 
-        field1, ind = value.max(dim=-1)
+        top2, indx = torch.topk(distances_to_centers, 2, dim=-1, largest=False)  ### two minimum distances
 
-        if self.ndim==2:
-            I, J = ind.shape
-            for i in range(I):
-                for j in range(J):
-                    value[i,j,ind[i,j]]=value[i,j,ind[i,j]]-100000000000
-        elif self.ndim==3:
-            I, J, K = ind.shape
-            for i in range(I):
-                for j in range(J):
-                    for k in range(K):
-                        value[i,j,k,ind[i,j,k]]=value[i,j,k,ind[i,j,k]]-100000000000
+        a = top2[...,0]     ### distance from x to c1
+        b = top2[...,1]     ### distance from x to c2
+        # distance_to_boundaries = 0.5*torch.abs(a-b) ###  distance to the Voronoi tessalation boundaries
 
-        field2, _ = value.max(dim=-1) 
+        ### distance from c1 to c2
+        c = torch.abs(centers[:,indx[...,0]] - centers[:,indx[...,1]])
+        if fg_periodic: c = torch.minimum(c, 1-c)  ### periodicity of distance 
+        c = c.norm(dim=0)
 
-        field = - 0.5 * abs(field1-field2) 
-        field = field - self.tau  
+        distance_to_boundaries = 0.5*torch.abs((a**2 - b**2)/c) ###  distance to the Voronoi tessalation boundaries
+
+        field = thickness - distance_to_boundaries
+
+        ### not optimal
+        # r = (x-centers).norm(dim=-2)
+        # value = self.cone(r, thickness)
+        # field1, ind = value.max(dim=-1)
+
+        # if self.ndim==2:
+        #     I, J = ind.shape
+        #     for i in range(I):
+        #         for j in range(J):
+        #             value[i,j,ind[i,j]]=value[i,j,ind[i,j]]-100000000000
+        # elif self.ndim==3:
+        #     I, J, K = ind.shape
+        #     for i in range(I):
+        #         for j in range(J):
+        #             for k in range(K):
+        #                 value[i,j,k,ind[i,j,k]]=value[i,j,k,ind[i,j,k]]-100000000000
+
+        # field2, _ = value.max(dim=-1) 
+
+        # field = - 0.5 * abs(field1-field2)
+        # field = field - self.tau
+        ### end "not optimal"
 
         # field = torch.tensor(-inf)
         # for i in range(nParticles):
@@ -132,5 +156,21 @@ class CracksCollection(RandomField):
 
     def cone(self, r, R):
         return 1.-r/R #-r
+
+# def dist(x, y):
+#     return (x-y).norm(dim=-1)
+
+# def dist_to_edge(x, e):
+#     a = dist(x, e[0])
+#     b = dist(x, e[1])
+#     c = dist(e[0], e[1])
+#     h = (a**2 + b**2)/2 - c**2/4 - ((a**2-b**2)/(2*c))**2
+#     h = h.sqrt()
+#     return h
+
+# def dist_to_centerline(x, c1, c2):
+#     h = dist_to_edge(x, [c1, c2])
+#     L = (c1-c2).norm
+#     d = torch.sqrt(L**2 - h**2)
 
     

@@ -26,7 +26,7 @@ class TwoPhaseMaterial(GaussianRandomField):
 
     def actfc_smooth(self, x):
         h = 1/self.Window.domain_shape.max() #* 2
-        eps = h**2
+        eps = h #h**2
         return 0.5*(torch.tanh(x / eps) + 1.)
 
     @property

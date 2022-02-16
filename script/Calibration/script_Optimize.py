@@ -3,17 +3,25 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from contextlib import suppress
-import os
+import sys, os
 
-from source.RMNet.GaussianRandomField import GaussianRandomField
-from source.RMNet.TwoPhaseMaterial import GaussianMaterial
-from source.RMNet.RandomMaterial import RandomMaterial
-from source.RMNet.StructureFields import GrainStructure, LatticeStructure, MatrixStructure
-from source.RMNet.StructureFields.SupportedMaterials import LatticeMaterial, GrainMaterial, ParticlesMaterial
-from source.RMNet.Kernels.MaternKernel import MaternKernel
-from source.RMNet.Calibration.Calibration_LBFGS import calibrate
-from source.RMNet.DataManager import read_data3D
-from source.RMNet.StatisticalDescriptors.common import interpolate
+###=============================================
+### Import from source
+
+SOURCEPATH = os.path.abspath(__file__)
+for i in range(10):
+    basename   = os.path.basename(SOURCEPATH)
+    SOURCEPATH = os.path.dirname(SOURCEPATH)
+    if basename == "script": break
+sys.path.append(SOURCEPATH)
+
+from source.GaussianRandomField import GaussianRandomField
+from source.TwoPhaseMaterial import GaussianMaterial
+from source.StructureFields.SupportedMaterials import LatticeMaterial, GrainMaterial, ParticlesMaterial
+from source.Kernels.MaternKernel import MaternKernel
+from source.Calibration.Calibration_LBFGS_mod import calibrate
+from source.DataManager import read_data3D
+from source.StatisticalDescriptors.common import interpolate
 
 from script.Calibration.load_data import load_data_from_npy
 
@@ -46,19 +54,19 @@ config = {
     'thickness'         :   0.3,
     'noise_sparsity'    :   0,
 ### Optimization
-    'max_iter'          :   100,
+    'max_iter'          :   500,
     'GAN'               :   False,
     'SGD'               :   False,
     'mean_only'         :   True,
     'beta'              :   0.9,
     'history_size'      :   100,
     'curvature_eps'     :   0.01,
-    'init_batch_size'   :   4,
+    'init_batch_size'   :   2,
     # 'nepochs'           :   20,
     # 'Optimizer'         :   torch.optim.LBFGS, ### torch.optim.LBFGS, torch.optim.SGD
     'lr'                :   1,
     # 'adapt'             :   True,
-    'tol'               :   1.e-4,
+    'tol'               :   1.e-3,
     'line_search'       :   'Armijo', ### 'Armijo', 'None', 'Wolfe'
     'Powell_dumping'    :   False,
     'regularization'    :   1.e-3,
@@ -73,9 +81,9 @@ config = {
                                 'Material.noise_quantile'
                             ],
 ### Data
-    'data_source'       :   'data3D_cell6.npy', ### 'surrogate', 'npy', 'image', '<filename>.npy'
+    'data_source'       :   'data3D_cell1.npy', ### 'surrogate', 'npy', 'image', '<filename>.npy'
     'input_folder'      :   '/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/workfolder/',
-    'output_folder'     :   '/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/workfolder/cells/cell_6/',
+    'output_folder'     :   '/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/workfolder/cells/cell_6_SGD/',
 }
 test_seed = 0
 
@@ -111,7 +119,7 @@ if config['data_source'] == 'surrogate': ### Generate surrogate data
     else:
         RF0.save_vtk(config['output_folder']+'sample_target', seed=test_seed)
 
-    Data = [ RF0.sample() for isample in range(10) ]
+    Data = [ RF0.sample() for isample in range(1) ]
 
 elif config['data_source'] == 'image': ### Data constructed from CT image
     Data = read_data3D(**config)

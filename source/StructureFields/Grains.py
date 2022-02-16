@@ -82,7 +82,7 @@ class GrainStructure(RandomField):
 
     def sample2d(self, noise=None):
         axes = [np.arange(n) for n in self.shape]
-        x = np.stack(np.meshgrid(*axes), axis=0)
+        x = np.stack(np.meshgrid(*axes, indexing="xy"), axis=0)
 
         angle = (-1)**(x[1] // self.SizeCell[1]).astype(np.int) * self.angle
 
@@ -108,7 +108,7 @@ class GrainStructure(RandomField):
 
     def sample3d(self, noise=None):
         axes = [np.arange(n) for n in self.shape]
-        x = np.stack(np.meshgrid(*axes), axis=0)
+        x = np.stack(np.meshgrid(*axes, indexing="xy"), axis=0)
 
         angle = (-1)**(x[1] // self.SizeCell[1]).astype(np.int) * self.angle
         mask  = (1 + (-1)**((x[1] // self.SizeCell[1]) + self.shift_layers).astype(np.int)) * 0.5

@@ -7,6 +7,8 @@ from time import time
 
 import torch
 from torch import nn
+# import pytorch3d
+from scipy.spatial.transform import Rotation
 
 from ..RandomField import RandomField
 
@@ -21,17 +23,28 @@ class ParticlesCollection(RandomField):
         # self.Poisson_mean = kwargs.get('Poisson_mean', 10)
         # self.Poisson_mean = nn.Parameter(torch.tensor(float(self.Poisson_mean)))
 
+        self.set_radius(**kwargs)
+
+        axes = [torch.arange(n)/n for n in self.Window.shape]
+        self.coordinates = torch.stack(torch.meshgrid(*axes, indexing="ij"), axis=-1).detach()
+
+
+    def set_radius(self, **kwargs):
+        self.fg_anisotrop = kwargs.get('anisotrop', False)
+        if self.ndim==3 and self.fg_anisotrop:
+            self.par_radius = nn.Parameter(torch.tensor([0.]*self.ndim))
+        else:
+            self.par_radius = nn.Parameter(torch.tensor([0.]))
+        radius = kwargs.get('radius', 0.1)
+        if np.isscalar(radius):
+            self.radius = radius
+        else:
+            self.radius = radius[0]
+
         # semiaxes = kwargs.get('semiaxes', 1) ### can be vector
         # self.isotropic = np.isscalar(semiaxes)
         # semiaxes = [semiaxes]*self.ndim if np.isscalar(semiaxes) else semiaxes[:self.ndim]
         # self.semiaxes = np.array(semiaxes)
-
-        self.par_radius = nn.Parameter(torch.tensor(0.))
-        self.radius = kwargs.get('radius', 0.1)
-
-        axes = [torch.arange(n)/n for n in self.Window.shape]
-        self.coordinates = torch.stack(torch.meshgrid(*axes), axis=-1).detach()
-
 
         
     #--------------------------------------------------------------------------
@@ -46,54 +59,49 @@ class ParticlesCollection(RandomField):
     @radius.setter
     def radius(self, radius):
         # self.__logRadius.data = torch.log(torch.tensor(float(radius)))
-        self.par_radius.data = torch.tensor(float(radius)).sqrt()
+        self.par_radius.data[:] = torch.tensor(radius, dtype=torch.double).sqrt()
 
-    # @semiaxes.setter
-    # def semiaxes(self, semiaxes):
-    #     _semiaxes = np.array(semiaxes)
-    #     if _semiaxes.size == self.ndim:
-    #         _semiaxes = _semiaxes / np.prod(_semiaxes)**(1/self.ndim)
-    #     elif _semiaxes.size == self.ndim-1:
-    #         _semiaxes = np.append(_semiaxes, 1/np.prod(_semiaxes))
-    #     else:
-    #         _semiaxes = _semiaxes*np.ones(self.ndim)
-    #     self.__semiaxes = _semiaxes
-    #     assert np.isclose(np.prod(self.semiaxes), 1)
-    #     self.isotropic = all([a==self.semiaxes[0] for a in self.semiaxes])
-
-     
     #--------------------------------------------------------------------------
     #   Sampling
     #--------------------------------------------------------------------------
 
     def sample(self):
         nParticles = self.draw_nParticles()
-        # centers    = np.random.uniform(size=[nParticles, self.ndim])
-        centers    = torch.rand(self.ndim, nParticles)
-        radius     = torch.tensor( np.random.lognormal(mean=np.log(self.radius.item()), sigma=np.sqrt(3*self.radius.item()), size=nParticles)  )
+        centers    = 0.1 + 0.8*torch.rand(self.ndim, nParticles)
+        # centers    = torch.rand(self.ndim, nParticles)
+        x          = self.coordinates.unsqueeze(-1)
 
-        # axes = [torch.arange(n)/n for n in self.Window.shape]
-        # x = torch.stack(torch.meshgrid(*axes), axis=-1)
-        x = self.coordinates.unsqueeze(-1)
-
-        r = (x-centers).norm(dim=-2)
-        field, _ = self.cone(r, radius).max(dim=-1)
-
-        # field = torch.tensor(-inf)
-        # for i in range(nParticles):
-        #     c = centers[i,:]
-        #     r = x-c
-        #     # if not self.isotropic: ### 2D only !!! TODO: rewrite using PyTorch
-        #     #     alpha = np.random.uniform(0, 2*pi)
-        #     #     R = np.array([[cos(alpha), -sin(alpha)], [sin(alpha), cos(alpha)]])
-        #     #     r = np.einsum("...i,ij->...j", r, R)
-        #     #     r = r/self.semiaxes
-        #     # r = np.sqrt(np.sum(r**2, axis=-1))
-        #     r = r.norm(dim=-1)
-        #     field_loc = self.cone(r)
-        #     field = torch.maximum(field, field_loc)
-
-        # field = torch.tensor(field)        
+        if self.ndim==3 and self.fg_anisotrop:
+            euler_angles      = (2*pi) * torch.rand(nParticles, self.ndim).detach()
+            rotation_matrices = torch.tensor( Rotation.from_euler("xyz", euler_angles.detach().numpy()).as_matrix() ).detach() ### numpy version
+            # rotation_matrices = pytorch3d.transforms.euler_angles_to_matrix(euler_angles, "XYZ") ### torch version (needs last version of torch3d)
+            rotation_matrices = torch.moveaxis(rotation_matrices, 0, -1)
+            radius            = self.radius.unsqueeze(-1) * torch.zeros(self.ndim, nParticles).log_normal_(mean=0, std=1.e-2) ### 1%-deviation
+            v   = (x-centers)
+            Rv  = torch.zeros_like(v).detach()
+            for iParticle in range(nParticles): ### number of particles is not big, so for loop is ok
+                R  = rotation_matrices[...,iParticle]
+                vi = v[...,iParticle].unsqueeze(-2)
+                Rv[...,iParticle] = (R * vi).sum(dim=-1)
+            # if np.max(v.shape)>2**7:
+            #     i   = v.shape[0]//2
+            #     Rv1 = (rotation_matrices * v[:i,...].unsqueeze(-3)).sum(dim=-2)
+            #     Rv2 = (rotation_matrices * v[i:,...].unsqueeze(-3)).sum(dim=-2)
+            #     Rv  = torch.stack([Rv1, Rv2], dim=0)
+            # else:
+            #     Rv  = (rotation_matrices * v.unsqueeze(-3)).sum(dim=-2)
+            DRv = Rv / radius
+            r   = DRv.square().sum(dim=-2).sqrt()    
+            R,_ = radius.min(dim=-2)
+            field, _ = (R*(1-r)).max(dim=-1)    ### maximum cone
+        else: ### isotropic particles
+            radius = self.radius * torch.zeros(nParticles).log_normal_(mean=0, std=1.e-2) ### 1%-deviation
+            r = (x-centers)
+            # r = r.abs()               ### periodicity of distance
+            # r = torch.minimum(r, 1-r) ### periodicity of distance
+            r = r.norm(dim=-2)        
+            field, _ = (radius-r).max(dim=-1)    ### maximum cone
+  
         return field
 
 

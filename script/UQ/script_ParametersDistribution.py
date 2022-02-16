@@ -5,8 +5,8 @@ import pickle
 
 
 
-inputfolder  = "/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/workfolder/cells/"
-outputfolder = "/home/khristen/Projects/Paris/RandomMaterialCode/data/case_LMS/lattice/UQ_MacroStiffness/"
+inputfolder  = "./"
+outputfolder = "./"
 
 ls_cells = 1+np.arange(6)
 

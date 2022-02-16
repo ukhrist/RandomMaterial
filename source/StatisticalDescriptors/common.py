@@ -59,7 +59,7 @@ def radial_profile(X, center=None):
     
     with torch.no_grad():
         x = [torch.arange(n) for n in X.shape]
-        x = torch.stack(torch.meshgrid(x), dim=-1)
+        x = torch.stack(torch.meshgrid(x, indexing="ij"), dim=-1)
         r = (x - center).norm(dim=-1)
 
     r = r.detach().numpy()
@@ -83,7 +83,7 @@ Get frequensies tensor
 def get_frequencies(X):    
     axes = [torch.arange(n) for n in X.shape]
     axes[-1] = torch.arange(int(np.ceil((X.shape[-1]+1)/2)))
-    k = 1.0 * torch.stack(torch.meshgrid(axes), dim=0).detach()
+    k = 1.0 * torch.stack(torch.meshgrid(axes, indexing="ij"), dim=0).detach()
     return k
 
 

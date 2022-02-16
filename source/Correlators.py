@@ -62,7 +62,7 @@ class Correlator_Torch(AbstractCorrelator):
             n, L = self.obj.Window.shape[i], self.obj.Window.scale[i]
             freq_gen = torch.fft.rfftfreq if i==self.ndim-1 else torch.fft.fftfreq
             freq[i]  = 2*pi*n*freq_gen(n, d=L)
-        self.freq = torch.stack(list(torch.meshgrid(*freq)), dim=-1).detach()
+        self.freq = torch.stack(list(torch.meshgrid(*freq, indexing="ij")), dim=-1).detach()
         self.KernelSpectrum = self.obj.Covariance.eval_spec(self.freq).sqrt()
         self.TransformScale = np.prod(self.obj.Window.shape/self.obj.Window.scale)**(1/2)
 
@@ -88,10 +88,10 @@ class Correlator_FFTW(AbstractCorrelator):
     def initialize(self):
         import pyfftw
         Window = self.obj.Window
-        L, N, d = Window.L, Window.N, Window.ndim
+        L, N, d = Window.scale[0], Window.shape[0], Window.ndim
         self.Frequences = (2*pi/L)*(N*fft.fftfreq(N))
         self.TransformNorm = L**(d/2)
-        shpR = Window.Nd
+        shpR = Window.shape
         shpC = shpR.copy()
         shpC[-1] = int(shpC[-1] // 2)+1
         axes = np.arange(self.ndim)

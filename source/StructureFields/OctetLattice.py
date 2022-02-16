@@ -62,12 +62,12 @@ class OctetLatticeStructure(RandomField):
     @property
     def thickness(self):
         return torch.exp(self.par_thickness)
-        # return self.par_thickness
+        # return self.par_thickness.square()
 
     @thickness.setter
     def thickness(self, thickness):
         self.par_thickness.data[:] = torch.log(torch.tensor(float( thickness )))
-        # self.par_thickness.data[:] = torch.tensor(float( thickness ))
+        # self.par_thickness.data[:] = torch.tensor(float( thickness )).sqrt()
 
     
     def init_2d(self):
@@ -166,26 +166,6 @@ class OctetLatticeStructure(RandomField):
 
 
     def generate_subcell(self):
-        # grid = [ np.arange(n)/n for n in self.subcell_size ]
-        # x = 1.*np.stack(np.meshgrid(*grid), axis=-1)
-        # x = torch.tensor(x, dtype=torch.float).detach()
-
-        # nodes = torch.tensor([[0,0,0], [0,1,1], [1,0,1], [1,1,0]], dtype=torch.float)
-        # edges = [ 
-        #     [ nodes[0], nodes[1] ],
-        #     [ nodes[0], nodes[2] ],
-        #     [ nodes[0], nodes[3] ],
-        #     [ nodes[1], nodes[2] ],
-        #     [ nodes[1], nodes[3] ],
-        #     [ nodes[2], nodes[3] ]
-        # ]
-
-        # subcell = torch.ones(*self.subcell_size) * (-100.)
-        # for e in edges:
-        #     val_loc = self.thickness - dist_to_edge(x, e)
-        #     subcell = torch.maximum(subcell, val_loc)
-        # return subcell
-
         return 0.5*self.thickness - self.subcell_dists
 
 

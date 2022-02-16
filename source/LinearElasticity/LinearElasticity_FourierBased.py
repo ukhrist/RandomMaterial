@@ -32,7 +32,7 @@ def create_Solver(A, tol=1.e-6):
 	pc = ksp.getPC()
 	pc.setType('none')
 	ksp.setFromOptions()
-	ksp.setTolerances(rtol=tol, divtol=1.e6, max_it=1000)
+	ksp.setTolerances(atol=tol, divtol=1.e6, max_it=1000)
 	ksp.setInitialGuessNonzero(True)
 	return ksp
 
@@ -458,9 +458,11 @@ class LinearElastisityProblem_FB(object):
 		G = 1/2 * MacroStress[-1] / MacroStrain[-1]
 		Young = 9*K*G/(3*K+G)
 
+		vf = self.Phase.mean()
+
 		if self.export_vtk: self.export(self.outputfolder + "result")
 
-		return [s1, s2, s3, K, G]
+		return [s1, s2, s3, K, G, Young, vf]
 
 
 
