@@ -27,14 +27,14 @@ config = {
     'grid_level'        :   9,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
-    'nu'                :   1,
+    'nu'                :   2,
     'correlation_length':   0.02,
     'Folded_GRF'        :   False,
 ### Support
     'alpha'             :   0.8,
 ### Grains
     'nPhases'           :   10,
-    'SizeCell'          :   [40,128],
+    'SizeCell'          :   [40,64],
     'angle'             :   pi/3,
     'mask'              :   False,
 }
