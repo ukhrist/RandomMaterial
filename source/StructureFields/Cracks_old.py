@@ -30,7 +30,7 @@ class CracksCollection(RandomField):
         self.thickness     = kwargs.get('thickness', 0.1)
 
         axes = [torch.arange(n)/n for n in self.Window.shape]
-        self.coordinates = torch.stack(torch.meshgrid(*axes), axis=-1).detach()
+        self.coordinates = torch.stack(torch.meshgrid(*axes, indexing="ij"), axis=-1).detach()
 
         self.tau = kwargs.get('tau', 0)
 
@@ -148,8 +148,8 @@ class CracksCollection(RandomField):
             nParticles = np.random.poisson(self.Poisson_mean)
             # nParticles = torch.poisson(torch.tensor((self.Poisson_mean)))
         else:
-            # nParticles = np.random.randint(self.min_particles_number, self.max_particles_number)
-            nParticles = torch.randint(self.min_particles_number, self.max_particles_number)
+            nParticles = np.random.randint(self.min_particles_number, self.max_particles_number)
+            # nParticles = torch.randint(self.min_particles_number, self.max_particles_number)
         if self.verbose: print(nParticles, "particles")
         return nParticles
 
