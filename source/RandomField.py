@@ -51,6 +51,9 @@ class RandomField(nn.Module):
         # Pseudo-random number generator
         self.PRNG = np.random.RandomState()
 
+        # Settings flags
+        self.FLAGS = {}
+
     #--------------------------------------------------------------------------
     #   Updates
     #--------------------------------------------------------------------------

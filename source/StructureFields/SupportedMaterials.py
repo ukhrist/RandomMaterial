@@ -11,6 +11,7 @@ from ..GaussianRandomField import GaussianRandomField
 from ..TwoPhaseMaterial import TwoPhaseMaterial
 from .OctetLattice import OctetLatticeStructure as LatticeStructure
 from .Grains import GrainStructure
+from .GrainClusters import GrainClustersStructure
 from .Particles import ParticlesCollection
 from .Fractures import FracturesCollection
 from .Voronoi import VoronoiCollection
@@ -170,6 +171,13 @@ class GrainMaterial(SupportedMaterial):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Structure = GrainStructure(**kwargs)
+
+
+class GrainClustersMaterial(SupportedMaterial):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.Structure = GrainClustersStructure(**kwargs)
 
 
 

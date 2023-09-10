@@ -27,20 +27,30 @@ config = {
     'grid_level'        :   9,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
-    'nu'                :   2,
-    'correlation_length':   0.02,
+    'nu'                :   10,
+    'correlation_length':   0.01,
     'Folded_GRF'        :   False,
 ### Support
-    'alpha'             :   0.8,
+    'alpha'             :   0.6,
 ### Grains
     'nPhases'           :   10,
-    'SizeCell'          :   [40,64],
+    'SizeCell'          :   [52,64],
     'angle'             :   pi/3,
     'mask'              :   False,
+### Clusters
+    'clusters'          :   {
+        'apply'                 :   False,
+        'ClusterRadius'         :   0.01,
+        'scale'                 :   1000.,
+        'nu'                    :   10,
+        'correlation_length'    :   0.005,
+        'Folded'                :   False,
+        'ClusterFunctionType'   :   'Gauss'
+    }
 }
 
 ### Sampling
-nsamples = 20
+nsamples = 1
 EXPORTDIR = "./"
 
 
@@ -48,7 +58,7 @@ EXPORTDIR = "./"
 ### Main part
 
 RM = MultiGrainMaterial(**config)
-# RM.seed(0) ### fix the random seed in order to have always the same realizations 
+RM.seed(0) ### fix the random seed in order to have always the same realizations 
 
 ### Generate multiple samples
 for isample in tqdm(range(nsamples)):
@@ -61,7 +71,31 @@ import matplotlib.pyplot as plt
 plt.style.use('classic')
 plt.rcParams['image.cmap']='rainbow'
 Sample = RM.sample_numpy()
-plt.imshow(Sample)
+norm = plt.Normalize(Sample.min(),Sample.max())
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list("",[
+    (0, "mediumvioletred"),
+    (1/9, "blueviolet"),
+    (2/9, "blue"),
+    (3/9, "lightsteelblue"),
+    (4/9, "paleturquoise"),
+    (5/9, "lawngreen"),
+    (6/9, "yellow"),
+    (7/9, "royalblue"),
+    (8/9, "coral"),
+    (1, "crimson"),
+    # "blueviolet",
+    # "blue",
+    # "royalblue",
+    # "lightsteelblue",
+    # "paleturquoise",
+    # "lawngreen",
+    # "yellow",
+    # "orange",
+    # "coral",
+    # "crimson",
+    # "mediumvioletred",
+    ])
+plt.imshow(Sample, cmap=cmap, norm=norm)
 plt.contour(Sample, config['nPhases'], colors="black", linewidths=0.3)
 plt.axis('off')
 filename  = os.path.abspath(os.path.join(EXPORTDIR, "sample_MF.jpg"))
