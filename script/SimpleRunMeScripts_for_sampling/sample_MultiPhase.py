@@ -39,14 +39,14 @@ config = {
     'mask'              :   False,
 ### Clusters
     'clusters'          :   {
-        'apply'                 :   False,
+        'apply'                 :   True,
         'ClusterRadius'         :   0.01,
         'scale'                 :   1000.,
         'nu'                    :   10,
         'correlation_length'    :   0.005,
         'Folded'                :   False,
         'ClusterFunctionType'   :   'Gauss'
-    }
+    },        
 }
 
 ### Sampling
@@ -58,12 +58,23 @@ EXPORTDIR = "./"
 ### Main part
 
 RM = MultiGrainMaterial(**config)
-RM.seed(0) ### fix the random seed in order to have always the same realizations 
+# RM.seed(0) ### fix the random seed in order to have always the same realizations 
+
+import numpy as np
+np.random.seed(0)
 
 ### Generate multiple samples
 for isample in tqdm(range(nsamples)):
     filename = os.path.abspath(os.path.join(EXPORTDIR, f"sample_{isample+1}.png"))
     RM.save_png(filename)
+
+### Generate labeled samples
+print()
+for isample in range(nsamples):
+    Sample, Label = RM.sample_labeled()
+    print(f"{isample} sample label: ")
+    print(Label)
+print()
 
 
 ### Generate one nice looking sample

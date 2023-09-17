@@ -64,6 +64,10 @@ class MultiGrainMaterial(MultiPhaseMaterial):
         config['Folded'] = True
         self.aux_field = GaussianRandomField(**config)
 
+        if kwargs.get('freeze_rseed', False):
+            for i, Phase in enumerate(self.Phases):
+                Phase.seed(i)
+
         if 'clusters' in kwargs.keys():
             self.FLAGS['clusters'] = kwargs['clusters'].get('apply', True)
             config = kwargs.copy()
@@ -72,6 +76,14 @@ class MultiGrainMaterial(MultiPhaseMaterial):
             self.ClusterPhase = GrainClustersMaterial(**config)
         else:
             self.FLAGS['clusters'] = False
+
+        ### Get the label
+        self.LABEL['PhaseAngles'] = [ Phase.Structure.angle for Phase in self.Phases ]
+        self.LABEL['PhaseShifts'] = [ Phase.Structure.shift for Phase in self.Phases ]
+        """NOTE: one has to distinguish "sample" and "material" labels.
+        Sample label varies with the samples and has to be filled in within the "sample" routine.
+        Material label is associated with the material and is defined within the "init" routine.
+        """
 
     def sample_intensities(self, noise=None):
         # IntensityVector = torch.stack([ 0*0.1*self.aux_field.sample() + Phase.sample_intensity() for Phase in self.Phases ], dim=-1)

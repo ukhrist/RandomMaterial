@@ -54,6 +54,9 @@ class RandomField(nn.Module):
         # Settings flags
         self.FLAGS = {}
 
+        # Sample/material label
+        self.LABEL = {}
+
     #--------------------------------------------------------------------------
     #   Updates
     #--------------------------------------------------------------------------
@@ -81,6 +84,11 @@ class RandomField(nn.Module):
         X = self.sample(noise)
         if torch.is_tensor(X): X = X.detach().numpy()
         return X
+
+    def sample_labeled(self, noise=None):
+        X = self.sample_numpy(noise)
+        L = self.LABEL
+        return X, L
 
 
     ### Generate a family of realizations
