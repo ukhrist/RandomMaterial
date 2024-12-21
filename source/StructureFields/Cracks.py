@@ -76,7 +76,6 @@ class CracksCollection(RandomField):
         else:
             fg_periodic = periodic
             
-
         nParticles = self.draw_nParticles()
         centers    = torch.rand(self.ndim, nParticles) ### uniform on [0,1]
         thickness  = self.thickness # * torch.zeros(nParticles).log_normal_(mean=0, std=sqrt(3))
@@ -145,7 +144,9 @@ class CracksCollection(RandomField):
 
     def draw_nParticles(self):
         if self.Poisson_mean:
-            nParticles = np.random.poisson(self.Poisson_mean)
+            nParticles = torch.poisson(torch.tensor(self.Poisson_mean).to(torch.double)).to(torch.int).item()
+            # nParticles = self.PRNG.poisson(self.Poisson_mean)
+            # nParticles = np.random.poisson(self.Poisson_mean)
             # nParticles = torch.poisson(torch.tensor((self.Poisson_mean)))
         else:
             # nParticles = np.random.randint(self.min_particles_number, self.max_particles_number)

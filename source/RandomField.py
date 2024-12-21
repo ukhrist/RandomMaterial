@@ -64,6 +64,7 @@ class RandomField(nn.Module):
     ### Reseed pseudo-random number generator
     def seed(self, seed=None):
         self.PRNG.seed(seed)
+        torch.manual_seed(seed)
 
     def update(self):
         pass
