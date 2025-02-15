@@ -23,26 +23,26 @@ from source.Kernels.MaternKernel import MaternKernel
 ### Configuration parameters
 
 config = {
-    'ndim'              :   3,
-    'grid_level'        :   7,
+    'ndim'              :   2,
+    'grid_level'        :   9,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
     'nu'                :   2,
     'correlation_length':   0.05,
     'Folded_GRF'        :   False,
 ### Support
-    'alpha'             :   0.005,
-    'thickness'         :   0.015,
+    'alpha'             :   0.01,
+    'thickness'         :   0.005,
     'Poisson_mean'      :   10,
 }
 
 fg_verbose           = True
-fg_fixed_seed        = False
+fg_fixed_seed        = True
 
 ### Sampling
-nsamples = 10
+nsamples = 1
 
-EXPORTDIR = "./samples/cracks_labeled"
+EXPORTDIR = os.path.join(os.path.dirname(__file__), "samples/cracks_labeled") ###NOTE: set your own export folder
 
 opt1 = "a=" + str(config['alpha']).replace('.', '_')
 opt2 = "l=" + str(config['correlation_length']).replace('.', '_')
@@ -84,6 +84,7 @@ for isample in tqdm(range(nsamples)):
     Sample   = RM.sample_numpy()
     RM.save_numpy(filename, Sample)
     RM.save_vtk(filename, Sample)
+    if config['ndim']==2: RM.save_png(filename+".png", Sample)
 
 if fg_verbose:
     print(f"Samples are successfully saved in {EXPORTDIR}")
