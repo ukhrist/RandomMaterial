@@ -27,12 +27,12 @@ config = {
     'grid_level'        :   9,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
-    'nu'                :   2,
-    'correlation_length':   0.05,
+    'nu'                :   0.5,
+    'correlation_length':   0.04,
     'Folded_GRF'        :   False,
 ### Support
-    'alpha'             :   0.01,
-    'thickness'         :   0.005,
+    'alpha'             :   0.001,
+    'thickness'         :   0.001,
     'Poisson_mean'      :   10,
 }
 
@@ -48,7 +48,7 @@ opt1 = "a=" + str(config['alpha']).replace('.', '_')
 opt2 = "l=" + str(config['correlation_length']).replace('.', '_')
 case = opt1 + "__" + opt2
 EXPORTDIR = os.path.join(EXPORTDIR, case)
-if not os.path.exists(EXPORTDIR): os.mkdir(EXPORTDIR)
+if not os.path.exists(EXPORTDIR): os.makedirs(EXPORTDIR)
 
 settingsfilename = os.path.abspath(os.path.join(EXPORTDIR, "settings.txt"))
 with open(settingsfilename, 'w') as file:
