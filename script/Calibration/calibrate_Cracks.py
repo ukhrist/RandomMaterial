@@ -40,8 +40,8 @@ fg_fixed_seed        = True
 # but the values are the placeholders and never used.
 
 config = {
-    'ndim'              :   2,
-    'grid_level'        :   9,
+    'ndim'              :   3,
+    'grid_level'        :   7,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
     'nu'                :   1.5,
