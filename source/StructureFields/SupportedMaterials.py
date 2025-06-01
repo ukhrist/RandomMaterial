@@ -16,6 +16,7 @@ from .Particles import ParticlesCollection
 from .Fractures import FracturesCollection
 from .Voronoi import VoronoiCollection
 from .Cracks import CracksCollection
+from .Cracks_gauss import CracksCollection_gauss
 from .Gyroid import Gyroid as GyroidStructure
 
 
@@ -159,6 +160,12 @@ class CracksMaterial(SupportedMaterial):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Structure = CracksCollection(**kwargs)
+
+# class CracksMaterial_gauss(SupportedMaterial):
+
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.Structure = CracksCollection_gauss(**kwargs)
 
 
 

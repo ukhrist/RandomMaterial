@@ -35,6 +35,7 @@ class CracksCollection(RandomField):
         self.tau = kwargs.get('tau', 0)
 
         self.fg_periodic = kwargs.get('periodic', True)
+        self.fixed_centers = None
 
 
         
@@ -76,9 +77,15 @@ class CracksCollection(RandomField):
         else:
             fg_periodic = periodic
             
-        nParticles = self.draw_nParticles()
-        centers    = torch.rand(self.ndim, nParticles) ### uniform on [0,1]
-        thickness  = self.thickness # * torch.zeros(nParticles).log_normal_(mean=0, std=sqrt(3))
+        if self.fixed_centers is None:
+            nParticles = self.draw_nParticles()
+            nParticles = int(np.maximum(nParticles, 2))
+            centers    = torch.rand(self.ndim, nParticles) ### uniform on [0,1]
+            print(f"Number of particles : {nParticles}")
+        else:
+            centers = self.fixed_centers
+        self.centers = centers
+        thickness = self.thickness # * torch.zeros(nParticles).log_normal_(mean=0, std=sqrt(3))
 
         x = self.coordinates.unsqueeze(-1)
 

@@ -91,13 +91,13 @@ class DistanceMeasure(nn.Module):
         return self.misfit.sum()
 
     def compute_misfit(self, predict, target, i=None):
-        # return (predict-target).square().mean() / (target).square().mean()
-        if predict.dim() > 1:
-            return (predict-target).square().mean() / (target).square().mean()
-            # return torch.log((predict/target).abs()).square().sum()
-        else:
-            return (predict-target).square().mean() / (target).square().mean()
-            # return torch.log((predict/target).abs()).square().mean() / torch.log((target).abs()).square().mean()
+        return (predict-target).square().mean() / (target).square().mean()
+        # if predict.dim() > 1:
+        #     return (predict-target).square().mean() / (target).square().mean()
+        #     # return torch.log((predict/target).abs()).square().sum()
+        # else:
+        #     return (predict-target).square().mean() / (target).square().mean()
+        #     # return torch.log((predict/target).abs()).square().mean() / torch.log((target).abs()).square().mean()
             
 
     def preprocess_data(self, Data):

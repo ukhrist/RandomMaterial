@@ -66,8 +66,8 @@ class MaternKernel(Kernel):
         # corrlen = [corrlen]*self.ndim if np.isscalar(corrlen) else corrlen[:self.ndim]
         # corrlen = torch.tensor(corrlen)
         # self.log_corrlen.data = torch.log(corrlen)
-        # self.log_corrlen.data[:] = torch.tensor(corrlen).log()
-        self.log_corrlen.data[:] = torch.tensor(corrlen).double().sqrt()
+        self.log_corrlen.data[:] = torch.tensor(corrlen).log()
+        # self.log_corrlen.data[:] = torch.tensor(corrlen).double().sqrt()
 
 
     def eval_func(self, x, nu=None, rho=None): ### no torch
