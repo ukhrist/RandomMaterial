@@ -16,7 +16,7 @@ from .Particles import ParticlesCollection
 from .Fractures import FracturesCollection
 from .Voronoi import VoronoiCollection
 from .Cracks import CracksCollection
-from .Cracks_gauss import CracksCollection_gauss
+# from .Cracks_gauss import CracksCollection_gauss
 from .Gyroid import Gyroid as GyroidStructure
 
 

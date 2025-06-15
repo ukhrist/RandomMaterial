@@ -22,7 +22,8 @@ sys.path.append(SOURCEPATH)
 
 from source.StructureFields.SupportedMaterials import CracksMaterial
 from source.Kernels.MaternKernel import MaternKernel
-from source.Calibration.Calibration_Cracks_EGO import calibrate_material_cracks
+# from source.Calibration.Calibration_Cracks_EGO import calibrate_material_cracks
+from source.Calibration.Calibration_Cracks_NLopt import calibrate_material_cracks
 from source.DataManager import read_data3D
 from script.Calibration.load_data import load_data_from_npy
 
@@ -40,8 +41,8 @@ fg_fixed_seed        = True
 # but the values are the placeholders and never used.
 
 config = {
-    'ndim'              :   3,
-    'grid_level'        :   7,
+    'ndim'              :   2,
+    'grid_level'        :   8,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
     'nu'                :   1.5,
@@ -85,11 +86,12 @@ config_optim = {
     # Non-given parameters are not calibrated and fixed to the initialized values.
     'parameters_bounds' : {        
         'ell'   : [1.e-4, 0.1],
-        'nu'    : [0.5, 3.],
+        # 'nu'    : [0.5, 3.],
         'alpha' : [0., 0.1],
         "tau"   : [0., 0.1],
     },
-    'n_calls' : 500, ### Number of calls of the objective function (beside initial DoE).
+    'n_calls' : 1000, ### Max number of calls of the objective function (beside initial DoE for EGO).
+    'n_samples' : 3,  ### Number of samples in the batch.
 }
                                 
 ### Calibration routine

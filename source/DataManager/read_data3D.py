@@ -87,7 +87,7 @@ Filter key for the filenames
 def key_func(fullpath):
     path, filename_with_ext = os.path.split(fullpath)
     name, ext = os.path.splitext(filename_with_ext)
-    return int(re.findall('\d+', name)[0])
+    return int(re.findall(r'\d+', name)[0])
     # if ext in ('tif',):        
     # else:
     #     return None

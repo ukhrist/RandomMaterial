@@ -30,7 +30,7 @@ class CracksCollection(RandomField):
         self.thickness     = kwargs.get('thickness', 0.1)
 
         axes = [torch.arange(n)/n for n in self.Window.shape]
-        self.coordinates = torch.stack(torch.meshgrid(*axes), axis=-1).detach()
+        self.coordinates = torch.stack(torch.meshgrid(*axes, indexing="ij"), axis=-1).detach()
 
         self.tau = kwargs.get('tau', 0)
 
@@ -81,7 +81,7 @@ class CracksCollection(RandomField):
             nParticles = self.draw_nParticles()
             nParticles = int(np.maximum(nParticles, 2))
             centers    = torch.rand(self.ndim, nParticles) ### uniform on [0,1]
-            print(f"Number of particles : {nParticles}")
+            # print(f"Number of particles : {nParticles}")
         else:
             centers = self.fixed_centers
         self.centers = centers

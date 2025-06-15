@@ -1,10 +1,11 @@
 
 from numpy.core.fromnumeric import shape
-from numpy.lib.function_base import diff
+# from numpy.lib.function_base import diff
+# from numpy import diff
 import torch
 import numpy as np
-from numpy.core.numeric import Inf
-import matplotlib.pyplot as plt
+# from numpy.core.numeric import Inf
+# import matplotlib.pyplot as plt
 
 from .common import gradient
 

@@ -125,7 +125,7 @@ def Matern_function(nu, x):
     y = sigma * (x**nu) * Kv(nu, x) if x>0 else 1
     return y
 
-Matern_function = np.vectorize(Matern_function, otypes=[np.float], excluded=['nu'])
+Matern_function = np.vectorize(Matern_function, otypes=[float], excluded=['nu'])
 
 
 #########################################################

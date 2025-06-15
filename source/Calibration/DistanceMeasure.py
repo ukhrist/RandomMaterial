@@ -4,7 +4,6 @@ import numpy as np
 from torch.autograd import backward
 
 from torch.nn.functional import softplus
-from numpy.lib.function_base import append
 import torch
 from torch import nn
 from torch import random

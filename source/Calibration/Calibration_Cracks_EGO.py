@@ -53,6 +53,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
         n_calls             :   Number of calls of the objective function (beside initial DoE).
                                 Default: 100*dim
     """   
+    print("Efficient Global Otimization (EGO) by OpenTurns")
 
     model_parameters = {
         "ell"   : RM.Covariance.corrlen,    # correlation length of the gaussian noise
@@ -77,6 +78,10 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
     dim = len(parameter_names)
 
     n_calls = kwargs.get('n_calls', 100*dim)
+    maxtime = kwargs.get('maxtime', -1)
+    discrepancy_tolerance = kwargs.get('discrepancy_tolerance', 1.e-3)
+    n_samples = kwargs.get('n_samples', 5)
+    seeds = [ np.random.randint(100) for i in range(n_samples) ]
 
     lowerbound, upperbound = list(zip(*parameter_bounds))
     shift = np.array(lowerbound)
@@ -108,9 +113,9 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
         print(f"ell={RM.Covariance.corrlen[0].item():6.4f}, nu={RM.Covariance.nu.item():6.4f}, alpha={RM.alpha.item():6.4f}, tau={RM.Structure.thickness.item():6.4f}")
 
     RM.icount = 0
+    RM.best_x = None
+    RM.best_y = 1.e10
 
-    n_samples = 5
-    seeds = [ np.random.randint(100) for i in range(n_samples) ]
 
     def objectiveFunction(x):
         RM.icount += 1
@@ -149,9 +154,18 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
                 #     if stop_criterion: break
 
         print(f"Discrepancy: {discrepancy}")
+        print("---------------------------------")
+
+        if discrepancy < RM.best_y:
+            RM.best_x = [ float(x[i] * scale[i] + shift[i]) for i in range(dim) ]
+            RM.best_y = discrepancy
+
+        print(f"Best x: {RM.best_x}")
+        print(f"Best y: {RM.best_y}")
         print("---------------------------------") 
-        # return [ np.log(discrepancy) ]
-        return [ discrepancy ]
+
+        return [ np.log(discrepancy) ]
+        # return [ discrepancy ]
 
     objectiveFunction = ot.PythonFunction(dim, 1, objectiveFunction)    
     
@@ -162,7 +176,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
         ot.Uniform(lowerbound[i], upperbound[i]) for i in range(dim)
     ]
     distribution = ot.JointDistribution(listUniformDistributions)
-    sampleSize = 10*dim
+    sampleSize = 2*dim
     experiment = ot.LHSExperiment(distribution, sampleSize)
     inputSample = experiment.generate()
     outputSample = objectiveFunction(inputSample)
@@ -200,7 +214,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
 
     algo = ot.EfficientGlobalOptimization(problem, kriging.getResult(), noise_variance)
     algo.setMaximumCallsNumber(n_calls)
-    algo.setOptimizationAlgorithm(ot.NLopt("GN_DIRECT"))
+    algo.setOptimizationAlgorithm(ot.NLopt("GN_DIRECT_L_RAND"))
     # algo.setOptimizationAlgorithm(ot.NLopt("GN_ISRES")) 
 
     # uniform = ot.JointDistribution([ot.Uniform(0., 1.)] * dim)

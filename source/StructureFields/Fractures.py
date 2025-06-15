@@ -9,8 +9,6 @@ import torch
 from torch import nn
 
 from sympy import Point3D, Line3D, Plane
-
-
 from pyrr import rectangle, vector, vector3, plane
 
 
