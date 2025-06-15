@@ -42,7 +42,7 @@ fg_fixed_seed        = True
 
 config = {
     'ndim'              :   2,
-    'grid_level'        :   8,
+    'grid_level'        :   10,
 ### Covariance
     'GRF_covariance'    :   MaternKernel,
     'nu'                :   1.5,
@@ -91,7 +91,7 @@ config_optim = {
         "tau"   : [0., 0.1],
     },
     'n_calls' : 1000, ### Max number of calls of the objective function (beside initial DoE for EGO).
-    'n_samples' : 3,  ### Number of samples in the batch.
+    'n_samples' : 10,  ### Number of samples in the batch.
 }
                                 
 ### Calibration routine

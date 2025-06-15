@@ -164,8 +164,8 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
         print(f"Best y: {RM.best_y}")
         print("---------------------------------") 
 
-        return [ np.log(discrepancy) ]
-        # return [ discrepancy ]
+        # return [ np.log(discrepancy) ]
+        return [ discrepancy ]
 
     objectiveFunction = ot.PythonFunction(dim, 1, objectiveFunction)    
     
