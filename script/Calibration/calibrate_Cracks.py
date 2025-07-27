@@ -98,7 +98,7 @@ config_optim = {
         "tau"   : [0., 0.1],
     },
     'n_calls' : 200,                    ### Max number of calls of the objective function (beside initial DoE for EGO).
-    'n_samples' : 50,                   ### Number of samples in the batch
+    'n_samples' : 10,                   ### Number of samples in the batch
     'discrepancy_tolerance' :   1.e-3,  ### stopping tolerance
     #
     # Experimental data
