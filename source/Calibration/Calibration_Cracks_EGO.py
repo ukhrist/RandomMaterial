@@ -30,7 +30,7 @@ def compute_descriptors(sample):
 def descriptors_discrepancy(sd, sd_ref):
     discrepancy = 0.
     weights = [1.]*4
-    weights = [0., 0., 1., 1.]
+    # weights = [0., 0., 1., 1.]
     for i in range(len(sd_ref)):
         delta_i  = (sd[i] - sd_ref[i]).square().mean()
         norm_i   = sd_ref[i].square().mean()
@@ -41,11 +41,13 @@ def descriptors_discrepancy(sd, sd_ref):
 
 
 
-def calibrate_material_cracks(RM, data_samples, **kwargs):
+def calibrate_material_cracks(RM, data, **kwargs):
     """
     Arguments:
         RM                  :   Random material instance to be calibrated
-        data_samples        :   List of samples of the target material to fit
+        data                :   Two modes:
+                                    1) List of data samples of the target material to fit
+                                    2) Target porosity (float scalar)
     kwargs (optional):
         parameters_bounds   :   (optional) Dictionary (keys: parameter names; values: parameter bounds)
                                 Only listed parameters are calibrated (within given bounds).
@@ -79,7 +81,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
 
     n_calls = kwargs.get('n_calls', 100*dim)
     maxtime = kwargs.get('maxtime', -1)
-    discrepancy_tolerance = kwargs.get('discrepancy_tolerance', 1.e-3)
+    discrepancy_tolerance = kwargs.get('discrepancy_tolerance', 1.e-6)
     n_samples = kwargs.get('n_samples', 5)
     seeds = [ np.random.randint(100) for i in range(n_samples) ]
 
@@ -89,9 +91,22 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
     assert all(scale > 0)
     lowerbound, upperbound = [0.]*dim, [1.]*dim
 
-
-    sd_data_list = [ compute_descriptors(sample) for sample in data_samples ]
-    sd_data = [ torch.stack(sd_i).mean(dim=0) for sd_i in zip(*sd_data_list)]
+    if hasattr(data, '__iter__'):
+        print()
+        print("Data is given by a list of target material samples")
+        print("Objective function : sum of discrepancies for descriptors vf, specific area, S2, grad_S2")
+        print()
+        data_samples = data  
+        sd_data_list = [ compute_descriptors(sample) for sample in data_samples ]
+        sd_data = [ torch.stack(sd_i).mean(dim=0) for sd_i in zip(*sd_data_list)]
+    else:
+        print()
+        print("Data is given by a volume fraction (porosity)")
+        print("Loss function : volume fraction (vf) discrepancy")
+        print()
+        data_porosity = data
+        sd_0 = torch.tensor([ data_porosity ])
+        sd_data = [ sd_0 ]
 
     def set_parameters(x):
         for i, pname in enumerate(parameter_names):
@@ -176,7 +191,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
         ot.Uniform(lowerbound[i], upperbound[i]) for i in range(dim)
     ]
     distribution = ot.JointDistribution(listUniformDistributions)
-    sampleSize = 2*dim
+    sampleSize = 10*dim
     experiment = ot.LHSExperiment(distribution, sampleSize)
     inputSample = experiment.generate()
     outputSample = objectiveFunction(inputSample)
@@ -215,7 +230,13 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
     algo = ot.EfficientGlobalOptimization(problem, kriging.getResult(), noise_variance)
     algo.setMaximumCallsNumber(n_calls)
     algo.setOptimizationAlgorithm(ot.NLopt("GN_DIRECT_L_RAND"))
-    # algo.setOptimizationAlgorithm(ot.NLopt("GN_ISRES")) 
+    # algo.setOptimizationAlgorithm(ot.NLopt("GN_ISRES"))
+    def check_stop():
+        if RM.best_y < discrepancy_tolerance:
+            return True
+        else:
+            return False
+    algo.setStopCallback(check_stop)
 
     # uniform = ot.JointDistribution([ot.Uniform(0., 1.)] * dim)
     # ot.RandomGenerator.SetSeed(0)
@@ -238,6 +259,7 @@ def calibrate_material_cracks(RM, data_samples, **kwargs):
     # optimum_curve = ot.Curve(ot.Sample([[0, fexact[0][0]], [29, fexact[0][0]]]))
     # graph.add(optimum_curve)
     view = viewer.View(graph, axes_kw={"xticks": range(0, result.getIterationNumber(), 5)})
+    # plt.yscale('log')
     plt.show()
 
     if dim==1:
